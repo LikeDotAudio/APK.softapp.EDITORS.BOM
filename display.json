@@ -1,0 +1,8 @@
+{
+  "name": "BOM Bill of Materials Editor",
+  "icon": "📋",
+  "group": "Purchasing",
+  "subGroup": "Materials & Costing",
+  "description": "Bill of Materials (BOM) Editor: track facility equipment quantities, manufacturer part numbers, list and net pricing, vendor quotes, procurement status, and phase delivery schedules.",
+  "app": "APK:Softapps/EDITORS/EDITORS.BOM/index.html"
+}

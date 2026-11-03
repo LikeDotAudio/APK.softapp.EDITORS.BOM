@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BOM Bill of Materials Editor — APK.audio</title>
+  <style>
+    body { font-family: -apple-system, sans-serif; background: #0f1218; color: #e2e8f0; margin: 0; padding: 20px; }
+    header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #283348; padding-bottom: 12px; margin-bottom: 20px; }
+    .card { background: #171d27; border: 1px solid #283348; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+    th, td { text-align: left; padding: 8px; border-bottom: 1px solid #222c3d; font-family: monospace; }
+    button { background: #0284c7; color: #fff; border: 1px solid #38bdf8; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <header>
+    <div style="display:flex; align-items:center; gap:10px;">
+      <span style="font-size:20px;">📋</span>
+      <h2>BOM Bill of Materials Editor</h2>
+    </div>
+    <button id="btn-export">Export BOM CSV</button>
+  </header>
+
+  <div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <h3 style="font-size:14px; text-transform:uppercase; color:#94a3b8;">Procurement Equipment List</h3>
+      <div style="font-size:15px; color:#34d399; font-weight:700;" id="bom-total">Total: $0.00</div>
+    </div>
+    <table>
+      <thead><tr><th>SKU</th><th>Manufacturer</th><th>Description</th><th>Qty</th><th>Unit Price</th><th>Extended</th><th>Status</th></tr></thead>
+      <tbody id="bom-rows"></tbody>
+    </table>
+  </div>
+
+  <script type="module">
+    import { BomModel } from './js/bomApp.js';
+    const model = new BomModel();
+    const tbody = document.getElementById('bom-rows');
+
+    model.items.forEach(i => {
+      const tr = document.createElement('tr');
+      const ext = (i.qty * i.unitCost).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+      const unit = i.unitCost.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+      tr.innerHTML = `<td><b>${i.sku}</b></td><td>${i.mfr}</td><td>${i.desc}</td><td>${i.qty}</td><td>${unit}</td><td>${ext}</td><td style="color:#38bdf8;">${i.status}</td>`;
+      tbody.appendChild(tr);
+    });
+
+    document.getElementById('bom-total').textContent = `Total: ${model.getTotalCost().toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`;
+
+    document.getElementById('btn-export').addEventListener('click', () => {
+      const header = 'SKU,Manufacturer,Description,Qty,UnitPrice,Status';
+      const rows = model.items.map(i => `"${i.sku}","${i.mfr}","${i.desc}",${i.qty},${i.unitCost},"${i.status}"`);
+      const csv = [header, ...rows].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'bom-schedule.csv';
+      a.click();
+    });
+  </script>
+</body>
+</html>
