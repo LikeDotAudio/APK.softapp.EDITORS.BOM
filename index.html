@@ -3,61 +3,158 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BOM Bill of Materials Editor — APK.audio</title>
+  <title>BOM Bill of Materials Editor · Standalone Block Editor</title>
+  <link rel="stylesheet" href="./css/theme.css">
   <style>
-    body { font-family: -apple-system, sans-serif; background: #0f1218; color: #e2e8f0; margin: 0; padding: 20px; }
-    header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #283348; padding-bottom: 12px; margin-bottom: 20px; }
-    .card { background: #171d27; border: 1px solid #283348; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
-    th, td { text-align: left; padding: 8px; border-bottom: 1px solid #222c3d; font-family: monospace; }
-    button { background: #0284c7; color: #fff; border: 1px solid #38bdf8; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
+    .bom-container {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      height: calc(100vh - 40px);
+      overflow: hidden;
+    }
+
+    .bom-header-bar {
+      background: var(--osc-bg-surface);
+      border-bottom: 1px solid var(--osc-border-default);
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .search-box {
+      width: 240px;
+    }
+
+    .telemetry-pill {
+      font-size: 11px;
+      font-family: var(--font-mono);
+      color: var(--osc-accent-primary);
+      background: var(--osc-bg-input);
+      border: 1px solid var(--osc-border-default);
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+
+    .data-grid-panel {
+      background: var(--osc-bg-surface);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .data-table-container {
+      flex: 1;
+      overflow: auto;
+    }
+
+    table.bom-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px;
+    }
+
+    table.bom-table th {
+      position: sticky;
+      top: 0;
+      background: var(--osc-bg-input);
+      color: var(--osc-text-muted);
+      padding: 6px 8px;
+      text-align: left;
+      border-bottom: 1px solid var(--osc-border-default);
+      font-weight: 600;
+      z-index: 2;
+    }
+
+    table.bom-table td {
+      padding: 2px 4px;
+      border-bottom: 1px solid var(--osc-border-default);
+    }
+
+    .cell-input {
+      width: 100%;
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--osc-text-primary);
+      padding: 4px 6px;
+      font-size: 11px;
+      border-radius: 2px;
+      font-family: inherit;
+    }
+
+    .cell-input:focus {
+      background: var(--osc-bg-input);
+      border-color: var(--osc-accent-primary);
+      outline: none;
+    }
+
+    .text-center {
+      text-align: center;
+    }
+
+    .col-actions {
+      width: 45px;
+      text-align: center;
+    }
   </style>
 </head>
-<body>
-  <header>
-    <div style="display:flex; align-items:center; gap:10px;">
-      <span style="font-size:20px;">📋</span>
-      <h2>BOM Bill of Materials Editor</h2>
+<body class="theme-deep-horizon">
+  <header class="app-window-header">
+    <div class="window-title-group">
+      <span class="window-dot"></span>
+      <span class="window-title">BOM Bill of Materials Editor</span>
+      <span class="window-pill" id="block-tag">STANDALONE BLOCK EDITOR</span>
     </div>
-    <button id="btn-export">Export BOM CSV</button>
+    <div class="window-actions">
+      <button class="btn btn-secondary" id="btn-sync-discovered" title="Load live BOM from Discovered Project">
+        <span class="btn-icon">⚡</span> Discovered
+      </button>
+      <button class="btn btn-secondary" id="btn-open" title="Open block JSON">
+        <span class="btn-icon">📂</span> Open
+      </button>
+      <button class="btn btn-primary" id="btn-save" title="Save & Return modified block to caller">
+        <span class="btn-icon">💾</span> Save & Return
+      </button>
+      <button class="btn btn-icon" id="btn-close" title="Close Editor">✕</button>
+    </div>
   </header>
 
-  <div class="card">
-    <div style="display:flex; justify-content:space-between; align-items:center;">
-      <h3 style="font-size:14px; text-transform:uppercase; color:#94a3b8;">Procurement Equipment List</h3>
-      <div style="font-size:15px; color:#34d399; font-weight:700;" id="bom-total">Total: $0.00</div>
+  <div class="bom-container">
+    <div class="bom-header-bar">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <input type="text" id="search-input" class="input search-box" placeholder="Filter equipment by SKU, manufacturer...">
+        <div class="telemetry-pill" id="bom-total" style="color:var(--osc-status-success);">Total: $0.00</div>
+        <div class="telemetry-pill" id="bom-count">0 Line Items</div>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn btn-secondary btn-sm" id="btn-export">Export CSV</button>
+        <button class="btn btn-primary btn-sm" id="btn-add-item">+ Add Item</button>
+      </div>
     </div>
-    <table>
-      <thead><tr><th>SKU</th><th>Manufacturer</th><th>Description</th><th>Qty</th><th>Unit Price</th><th>Extended</th><th>Status</th></tr></thead>
-      <tbody id="bom-rows"></tbody>
-    </table>
+
+    <section class="data-grid-panel">
+      <div class="data-table-container">
+        <table class="bom-table">
+          <thead>
+            <tr>
+              <th style="width:130px;">SKU / Part #</th>
+              <th style="width:140px;">Manufacturer</th>
+              <th>Equipment Description</th>
+              <th style="width:65px;" class="text-center">Qty</th>
+              <th style="width:100px;" class="text-center">Unit Cost ($)</th>
+              <th style="width:100px; text-align:right;">Ext Cost</th>
+              <th style="width:110px;">Status</th>
+              <th class="col-actions">Act</th>
+            </tr>
+          </thead>
+          <tbody id="bom-table-body"></tbody>
+        </table>
+      </div>
+    </section>
   </div>
 
-  <script type="module">
-    import { BomModel } from './js/bomApp.js';
-    const model = new BomModel();
-    const tbody = document.getElementById('bom-rows');
-
-    model.items.forEach(i => {
-      const tr = document.createElement('tr');
-      const ext = (i.qty * i.unitCost).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
-      const unit = i.unitCost.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
-      tr.innerHTML = `<td><b>${i.sku}</b></td><td>${i.mfr}</td><td>${i.desc}</td><td>${i.qty}</td><td>${unit}</td><td>${ext}</td><td style="color:#38bdf8;">${i.status}</td>`;
-      tbody.appendChild(tr);
-    });
-
-    document.getElementById('bom-total').textContent = `Total: ${model.getTotalCost().toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`;
-
-    document.getElementById('btn-export').addEventListener('click', () => {
-      const header = 'SKU,Manufacturer,Description,Qty,UnitPrice,Status';
-      const rows = model.items.map(i => `"${i.sku}","${i.mfr}","${i.desc}",${i.qty},${i.unitCost},"${i.status}"`);
-      const csv = [header, ...rows].join('\n');
-      const blob = new Blob([csv], { type: 'text/csv' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'bom-schedule.csv';
-      a.click();
-    });
-  </script>
+  <script type="module" src="./js/bomApp.js"></script>
 </body>
 </html>
