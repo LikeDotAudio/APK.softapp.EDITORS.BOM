@@ -6,7 +6,6 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { BomModel, BOM_BLOCK_TYPE } from '../js/bomModel.js';
-import { thingRow, thingIdentity } from '../js/discoveredPanel.js';
 import { world, roundTrip, ORIGIN, PROTOCOL } from './softapp-harness.mjs';
 
 const connect = (model) => (S) => S.connectHost({
@@ -56,6 +55,7 @@ test('BOM: a discovered thing becomes one line keyed by MAC, no invented price, 
   assert.equal(it.unitCost, 0);
   assert.equal(it.mfr, 'Crown');
   assert.equal(model.addFromThing({ ...thing, ips: ['10.0.0.10'] }), null, 'same MAC, new IP: same thing');
+  const { thingRow, thingIdentity } = world().S;   // the shared Discovered panel's rows (vendor/apk-softapp)
   const row = thingRow(thing);
   assert.equal(row.identity, thing.mac);
   assert.equal(row.state, 'good');
