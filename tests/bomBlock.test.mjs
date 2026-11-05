@@ -61,3 +61,15 @@ test('BOM: a discovered thing becomes one line keyed by MAC, no invented price, 
   assert.equal(row.state, 'good');
   assert.equal(thingIdentity({ ips: ['1.2.3.4'] }), '', 'an IP is never identity');
 });
+
+test('a library part becomes a BOM line, and the same part again is one more of it', () => {
+  const m = new BomModel();
+  const n = m.items.length;
+  const part = { id: 'qsc/core-110f', manufacturer: 'QSC', model: 'Core 110f', part_number: 'CORE-110F', name: 'QSC Core 110f' };
+  const line = m.addFromPart(part);
+  assert.equal(m.items.length, n + 1);
+  assert.deepEqual([line.sku, line.mfr, line.unitCost, line.status, line.bimId], ['CORE-110F', 'QSC', 0, 'Specified', 'qsc/core-110f']);
+  m.addFromPart(part);
+  assert.equal(m.items.length, n + 1);
+  assert.equal(line.qty, 2);
+});

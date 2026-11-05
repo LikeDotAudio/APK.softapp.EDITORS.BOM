@@ -31,7 +31,7 @@ export class BomModel {
       unitCost: num(item.unitCost, 0),
       status: item.status || 'Specified',
     };
-    for (const k of ['mac', 'serial']) if (item[k]) it[k] = String(item[k]);
+    for (const k of ['mac', 'serial', 'bimId']) if (item[k]) it[k] = String(item[k]);
     this.items.push(it);
     return it;
   }
@@ -46,6 +46,25 @@ export class BomModel {
     if (field === 'qty') it.qty = Math.max(0, Math.round(num(value, 1)));
     else if (field === 'unitCost') it.unitCost = num(value, 0);
     else it[field] = value;
+  }
+
+  /** A line for a part picked from the BIM library (DATABASE.server.BIM). The same part
+      again is one more of it, not a second line. The library keeps no prices: 0 until quoted. */
+  addFromPart(part = {}) {
+    const same = part.id && this.items.find((i) => i.bimId === part.id);
+    if (same) {
+      same.qty = num(same.qty, 0) + 1;
+      return same;
+    }
+    return this.addItem({
+      sku: part.part_number || part.model || '',
+      mfr: part.manufacturer || '',
+      desc: part.description || part.name || part.model || '',
+      qty: 1,
+      unitCost: 0,
+      status: 'Specified',
+      bimId: part.id || '',
+    });
   }
 
   /** A line for one discovered thing: what is on the network, as found. No price is invented (0 until quoted). */

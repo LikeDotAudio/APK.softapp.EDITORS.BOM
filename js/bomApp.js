@@ -84,6 +84,11 @@ export class BomApp {
     });
     this.searchInput?.addEventListener('input', () => this.table.filter(this.searchInput.value));
     this.btnAddItem?.addEventListener('click', () => { this.model.addItem(); this.changed(); });
+    // 📚 Library: the shared picker the BIM library serves. A host without it (a static copy) keeps + Add Item only.
+    import('/api/bim/ui/picker.js').then(({ libraryButton }) => {
+      this.btnAddItem?.before(libraryButton({ title: 'Add equipment from the device library', multi: true },
+        (part) => { this.model.addFromPart(part); this.changed(); }));
+    }).catch(() => {});
     this.btnExportCsv?.addEventListener('click', () => this.table.exportCsv('bom_schedule.csv'));
   }
 
