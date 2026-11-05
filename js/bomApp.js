@@ -3,10 +3,9 @@
 /* bomApp.js — the BOM editor. The block goes in and out over cad.like.audio/host@1
    (window.APKSoftapp.connectHost, vendor/apk-softapp/); the table is APKTable
    'bom-items' (vendor/apk-table/); "Discovered" lists what the bus knows
-   (js/discoveredPanel.js, kinds in config/discovery.json). */
+   (APKSoftapp.discoveredPanel, kinds in config/discovery.json). */
 
 import { BomModel, BOM_BLOCK_TYPE, BOM_STATUSES } from './bomModel.js';
-import { DiscoveredPanel } from './discoveredPanel.js';
 
 const money = (v) => Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -16,6 +15,29 @@ export class BomApp {
     const S = window.APKSoftapp;
     S.inheritTheme();
 
+    S.describe({
+      name: 'BOM Editor',
+      does: 'Bill of materials for one drawing: line items with quantity, unit and extended cost, as a BOM block for the CAD.',
+      inputs: [
+        { name: 'BOM block', from: 'the CAD (when opened from a drawing), or a .json file via Open', kind: 'file' },
+        { name: 'Device library', from: 'the BIM library picker at /api/bim (Library button; absent on a static copy)' },
+        { name: 'On the network', from: 'the bus: devices discovered by scanners and agents (kinds in config/discovery.json)', kind: 'bus' },
+      ],
+      outputs: [
+        { name: 'BOM block', to: 'the CAD on Save & Return and on every edit; standalone Save downloads bom.json', kind: 'file' },
+        { name: 'bom_schedule.csv', to: 'a download (Export CSV)', kind: 'file' },
+      ],
+      controls: [
+        { name: 'Open / Save & Return / Close', how: 'header buttons' },
+        { name: '+ Add Item / Library', how: 'add a blank line, or one or more parts from the device library' },
+        { name: 'Table cells', how: 'edit SKU, maker, description, qty, unit cost, status in place; row button deletes' },
+        { name: 'Filter', how: 'type to filter the lines by any column' },
+        { name: 'Discovered', how: 'shows what the bus has discovered; Add line puts one in the BOM' },
+        { name: 'Export CSV', how: 'download the schedule as CSV' },
+      ],
+      problems: ['bad_json', 'bad_input', 'file_unreadable', 'not_in_cad', 'bus_missing'],
+    });
+
     this.initElements();
     this.makeTable();
     this.host = S.connectHost({
@@ -24,14 +46,16 @@ export class BomApp {
       onLoad: (block, meta) => this.handleBlockLoaded(block, meta),
       onRequest: () => this.model.toBlock(),
     });
-    this.discovered = new DiscoveredPanel({
-      tableId: 'bom-discovered',
-      tableHost: document.getElementById('discovered-table'),
-      statusEl: document.getElementById('discovered-status'),
-      configUrl: new URL('../config/discovery.json', import.meta.url),
-      pickLabel: 'Add line',
-      onPick: (thing) => { if (this.model.addFromThing(thing)) this.changed(); },
-    });
+    // the Discovered panel is the shared client's (ROAD-3502); start() draws it once, on first show
+    this.discovered = {
+      start: () => (this.discoveredRun ||= window.APKSoftapp?.discoveredPanel(document.getElementById('discovered-table'), {
+        id: 'bom-discovered',
+        status: document.getElementById('discovered-status'),
+        configUrl: new URL('../config/discovery.json', import.meta.url),
+        pickLabel: 'Add line',
+        onPick: (thing) => { if (this.model.addFromThing(thing)) this.changed(); },
+      })),
+    };
     this.attachEvents();
     this.render();
   }
@@ -98,10 +122,11 @@ export class BomApp {
   }
 
   handleBlockLoaded(block, meta = {}) {
-    if (!this.model.fromBlock(block)) return;
+    if (!this.model.fromBlock(block)) return false;
     const tag = document.getElementById('block-tag');
     if (tag && (meta.title || meta.blockName)) tag.textContent = meta.title || meta.blockName;
     this.render();
+    return true;
   }
 
   saveBlock() {
@@ -131,12 +156,23 @@ export class BomApp {
       const file = e.target.files[0];
       if (!file) return;
       const reader = new FileReader();
+      const retry = () => this.promptOpen();
+      reader.onerror = () => window.APKSoftapp.showProblem('file_unreadable', {
+        subject: file.name, detail: reader.error && reader.error.message, onRetry: retry,
+      });
       reader.onload = (re) => {
         try {
-          this.handleBlockLoaded(JSON.parse(re.target.result), { title: file.name });
+          if (!this.handleBlockLoaded(JSON.parse(re.target.result), { title: file.name })) {
+            throw new TypeError('no "items" list: this is not a BOM block');
+          }
           this.host.changed(this.model.toBlock());
         } catch (err) {
-          alert('Invalid JSON BOM block');
+          window.APKSoftapp.showProblem(err instanceof SyntaxError ? 'bad_json' : 'bad_input', {
+            subject: file.name,
+            detail: err.message,
+            fix: ['Open a BOM block .json (Save & Return outside the CAD downloads bom.json).'],
+            onRetry: retry,
+          });
         }
       };
       reader.readAsText(file);
