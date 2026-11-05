@@ -1,0 +1,4 @@
+{
+  "_about": "Which discovered things the BOM's 'On the network' panel lists. kinds: case-insensitive substrings of a protocol name, a scanner kind segment or a device_class (APKSoftapp.discovered). An empty list shows everything on the bus. Tunable only: no code holds a device list.",
+  "kinds": []
+}
