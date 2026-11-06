@@ -11,6 +11,7 @@
 
 import { BomModel, BOM_BLOCK_TYPE, BOM_STATUSES } from './bomModel.js';
 import { bomToIfc } from './bomIfc.js';
+import { bomRowIfc } from './bomRowIfc.js';
 
 const BENCH_IFC = '/api/bim/bench.ifc';
 // The BIM server's own BOM query (bim/bom.py): the body, and the rig model it counts (kits expanded)
@@ -39,6 +40,7 @@ export class BomApp {
         { name: 'BOM block', to: 'the CAD on Save & Return and on every edit', kind: 'file' },
         { name: 'bom.json + bom.ifc', to: 'standalone Save: the apk.bom/2 block and its IFC4X3 twin (cost schedule, orders, suppliers, makers over the rig)', kind: 'file' },
         { name: 'bom_schedule.csv', to: 'a download (Export CSV)', kind: 'file' },
+        { name: 'bom_schedule.ifc', to: 'a download (Export IFC): the lines shown, each an IfcCostItem with its unit cost, qty and APK_Procurement (bomRowIfc.js)', kind: 'file' },
       ],
       controls: [
         { name: 'Open / Open Bench / Save & Return / Close', how: 'header buttons (Open takes .ifc or .json)' },
@@ -47,6 +49,7 @@ export class BomApp {
         { name: 'Filter', how: 'type to filter the lines by any column' },
         { name: 'Discovered', how: 'shows what the bus has discovered; Add line puts one in the BOM' },
         { name: 'Export CSV', how: 'download the schedule as CSV' },
+        { name: 'Export IFC', how: 'download the schedule as IFC4X3_ADD2 (the table\'s IFC export)' },
       ],
       problems: ['bad_json', 'bad_input', 'file_unreadable', 'not_in_cad', 'bus_missing'],
     });
@@ -84,6 +87,7 @@ export class BomApp {
     this.totalItemsEl = document.getElementById('bom-count');
     this.btnAddItem = document.getElementById('btn-add-item');
     this.btnExportCsv = document.getElementById('btn-export');
+    this.btnExportIfc = document.getElementById('btn-export-ifc');
     this.searchInput = document.getElementById('search-input');
   }
 
@@ -91,6 +95,7 @@ export class BomApp {
     this.table = window.APKTable.create(document.getElementById('bom-table'), {
       id: 'bom-items',
       toolbar: false,
+      ifc: bomRowIfc(this.model),   // Export IFC beside Export CSV: each line an IfcCostItem (bomRowIfc.js)
       columns: [
         // the part's own (the BIM library): never typed here (ROAD-3572)
         { key: 'sku', label: 'SKU / Part #', editable: false },
@@ -133,6 +138,7 @@ export class BomApp {
     const tableEl = document.getElementById('bom-table');
     if (tableEl) acceptLibraryDrops(tableEl, (it) => addItems([it]));
     this.btnExportCsv?.addEventListener('click', () => this.table.exportCsv('bom_schedule.csv'));
+    this.btnExportIfc?.addEventListener('click', () => this.table.exportIfc('bom_schedule.ifc'));
   }
 
   changed() {
