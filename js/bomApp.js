@@ -3,9 +3,16 @@
 /* bomApp.js — the BOM editor. The block goes in and out over cad.like.audio/host@1
    (window.APKSoftapp.connectHost, vendor/apk-softapp/); the table is APKTable
    'bom-items' (vendor/apk-table/); "Discovered" lists what the bus knows
-   (APKSoftapp.discoveredPanel, kinds in config/discovery.json). */
+   (APKSoftapp.discoveredPanel, kinds in config/discovery.json).
+   bom-fm-1..3: the lines are a query over a rig's occurrences (Open an .ifc, or Open Bench =
+   GET /api/bim/bench.ifc) grouped by type, kits expanded per occurrence; standalone Save writes the
+   apk.bom/2 block AND its .ifc twin (APKSoftapp.saveModel; js/bomIfc.js bomToIfc: IfcCostSchedule,
+   IfcCostItem, IfcProjectOrder, supplier and maker IfcActors over the rig). */
 
 import { BomModel, BOM_BLOCK_TYPE, BOM_STATUSES } from './bomModel.js';
+import { bomToIfc } from './bomIfc.js';
+
+const BENCH_IFC = '/api/bim/bench.ifc';
 import { libraryButton, acceptLibraryDrops, bimFields } from './bimLibrary.js';
 
 const money = (v) => Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -21,17 +28,19 @@ export class BomApp {
       does: 'Bill of materials for one drawing: line items with quantity, unit and extended cost, as a BOM block for the CAD.',
       inputs: [
         { name: 'BOM block', from: 'the CAD (when opened from a drawing), or a .json file via Open', kind: 'file' },
+        { name: 'Rig model (.ifc)', from: 'Open an .ifc, or Open Bench (GET /api/bim/bench.ifc): each line is a type, qty = its occurrences', kind: 'file' },
         { name: 'Device library', from: 'the BIM library (📚 Library, Ctrl+Shift+L, or a part dragged from it): each line keeps its bimId and bimRef' },
         { name: 'On the network', from: 'the bus: devices discovered by scanners and agents (kinds in config/discovery.json)', kind: 'bus' },
       ],
       outputs: [
-        { name: 'BOM block', to: 'the CAD on Save & Return and on every edit; standalone Save downloads bom.json', kind: 'file' },
+        { name: 'BOM block', to: 'the CAD on Save & Return and on every edit', kind: 'file' },
+        { name: 'bom.json + bom.ifc', to: 'standalone Save: the apk.bom/2 block and its IFC4X3 twin (cost schedule, orders, suppliers, makers over the rig)', kind: 'file' },
         { name: 'bom_schedule.csv', to: 'a download (Export CSV)', kind: 'file' },
       ],
       controls: [
-        { name: 'Open / Save & Return / Close', how: 'header buttons' },
+        { name: 'Open / Open Bench / Save & Return / Close', how: 'header buttons (Open takes .ifc or .json)' },
         { name: '📚 Library', how: 'add one or more parts from the BIM library (Ctrl+Shift+L), or drop a part dragged from it on the table' },
-        { name: 'Table cells', how: 'edit description, qty, unit cost, status in place (SKU and maker are the part\'s); row button deletes' },
+        { name: 'Table cells', how: 'edit description, qty (planned units; placed ones stay), unit cost, procurement status, supplier, PO in place (SKU and maker are the part\'s); row button deletes the planned units' },
         { name: 'Filter', how: 'type to filter the lines by any column' },
         { name: 'Discovered', how: 'shows what the bus has discovered; Add line puts one in the BOM' },
         { name: 'Export CSV', how: 'download the schedule as CSV' },
@@ -63,6 +72,7 @@ export class BomApp {
 
   initElements() {
     this.btnOpen = document.getElementById('btn-open');
+    this.btnOpenBench = document.getElementById('btn-open-bench');
     this.btnSave = document.getElementById('btn-save');
     this.btnClose = document.getElementById('btn-close');
     this.btnSyncDiscovered = document.getElementById('btn-sync-discovered');
@@ -84,9 +94,12 @@ export class BomApp {
         { key: 'mfr', label: 'Manufacturer', editable: false },
         { key: 'desc', label: 'Equipment Description' },
         { key: 'qty', label: 'Qty', type: 'number' },
+        { key: 'placed', label: 'Placed', editable: false, align: 'right' },
         { key: 'unitCost', label: 'Unit Cost ($)', type: 'number' },
         { key: 'ext', label: 'Ext Cost', editable: false, align: 'right', format: (_v, row) => `$${money(row.qty * row.unitCost)}` },
-        { key: 'status', label: 'Status', type: 'select', options: BOM_STATUSES },
+        { key: 'status', label: 'Procurement', type: 'select', options: BOM_STATUSES },
+        { key: 'supplier', label: 'Supplier' },
+        { key: 'po', label: 'PO #' },
       ],
       rows: this.model.items,
       onEdit: (i, key, value) => {
@@ -102,6 +115,7 @@ export class BomApp {
 
   attachEvents() {
     this.btnOpen?.addEventListener('click', () => this.promptOpen());
+    this.btnOpenBench?.addEventListener('click', () => this.promptOpen({ url: BENCH_IFC }));
     this.btnSave?.addEventListener('click', () => this.saveBlock());
     this.btnClose?.addEventListener('click', () => this.host.close());
     this.btnSyncDiscovered?.addEventListener('click', () => {
@@ -131,9 +145,16 @@ export class BomApp {
     return true;
   }
 
-  saveBlock() {
+  /** In the CAD: the block goes back (Save & Return). Standalone: the block and its .ifc twin, both or neither. */
+  async saveBlock() {
     const block = this.model.toBlock();
-    this.host.save(block, {
+    const S = window.APKSoftapp;
+    if (window.parent === window) {
+      const r = await S.saveModel(this.model, { name: 'bom', toIfc: (m) => bomToIfc(m), toJson: (m) => m.toBlock() });
+      if (!r.ok && !r.cancelled && r.problem) S.showProblem(r.problem);
+      return r;
+    }
+    return this.host.save(block, {
       title: `BOM (${block.itemCount} Lines · $${block.totalCost.toFixed(2)})`,
       filename: 'bom',
     });
@@ -150,36 +171,25 @@ export class BomApp {
     this.totalItemsEl.textContent = `${this.model.items.length} Line Items`;
   }
 
-  promptOpen() {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
-    input.onchange = (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      const retry = () => this.promptOpen();
-      reader.onerror = () => window.APKSoftapp.showProblem('file_unreadable', {
-        subject: file.name, detail: reader.error && reader.error.message, onRetry: retry,
-      });
-      reader.onload = (re) => {
-        try {
-          if (!this.handleBlockLoaded(JSON.parse(re.target.result), { title: file.name })) {
-            throw new TypeError('no "items" list: this is not a BOM block');
-          }
-          this.host.changed(this.model.toBlock());
-        } catch (err) {
-          window.APKSoftapp.showProblem(err instanceof SyntaxError ? 'bad_json' : 'bad_input', {
-            subject: file.name,
-            detail: err.message,
-            fix: ['Open a BOM block .json (Save & Return outside the CAD downloads bom.json).'],
-            onRetry: retry,
-          });
-        }
-      };
-      reader.readAsText(file);
-    };
-    input.click();
+  /** Open an .ifc (a rig, a bench, or a twin this editor saved) or a BOM block .json. */
+  async promptOpen(opts = {}) {
+    const S = window.APKSoftapp;
+    const o = await S.openModel({
+      ...opts,
+      fromIfc: (text, name) => { this.model.loadIfc(text, name); return this.model; },
+      fromJson: (data) => {
+        if (!this.model.fromBlock(data)) throw new TypeError('no "items" list: this is not a BOM block');
+        return this.model;
+      },
+    });
+    if (!o.ok) {
+      if (!o.cancelled && o.problem) S.showProblem(o.problem, { onRetry: () => this.promptOpen(opts) });
+      return o;
+    }
+    const tag = document.getElementById('block-tag');
+    if (tag) tag.textContent = o.name || (o.kind === 'ifc' ? 'IFC model' : 'BOM block');
+    this.changed();
+    return o;
   }
 }
 

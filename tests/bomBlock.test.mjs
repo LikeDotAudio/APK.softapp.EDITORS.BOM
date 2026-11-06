@@ -13,7 +13,7 @@ const connect = (model) => (S) => S.connectHost({
   onLoad: (b) => model.fromBlock(b), onRequest: () => model.toBlock(),
 });
 
-test('BOM: the CAD loads a block, asks for it back, gets the same lines at its own origin', () => {
+test('BOM: the CAD loads a (v1) block, asks for it back, gets the same lines at its own origin', () => {
   const model = new BomModel();
   const block = { type: BOM_BLOCK_TYPE, items: [{ id: 'a', sku: 'X-1', mfr: 'M', desc: 'd', qty: 3, unitCost: 2.5, status: 'Ordered' }] };
   const { w, ready, saved } = roundTrip({ connect: connect(model), block });
@@ -22,7 +22,10 @@ test('BOM: the CAD loads a block, asks for it back, gets the same lines at its o
   assert.equal(model.items.length, 1);
   assert.ok(saved, 'blockSave sent');
   assert.equal(saved.o, ORIGIN, 'posted to our own origin, never *');
-  assert.deepEqual(saved.m.block.items, block.items);
+  assert.equal(saved.m.block.schema, 'apk.bom/2', 'a v1 block comes back as apk.bom/2');
+  const [line] = saved.m.block.items;
+  assert.deepEqual([line.sku, line.mfr, line.desc, line.qty, line.unitCost, line.status], ['X-1', 'M', 'd', 3, 2.5, 'Ordered']);
+  assert.equal(saved.m.block.occurrences.length, 3, 'qty 3 is three occurrences, not a counter');
   assert.equal(saved.m.block.totalCost, 7.5);
   assert.ok(w.toParent.every((x) => x.o === ORIGIN));
   assert.equal(w.downloads.length, 0, 'no download when embedded');
@@ -69,9 +72,10 @@ test('a library part becomes a BOM line, and the same part again is one more of 
   const line = m.addFromPart(part);
   assert.equal(m.items.length, n + 1);
   assert.deepEqual([line.sku, line.mfr, line.unitCost, line.status, line.bimId], ['CORE-110F', 'QSC', 0, 'Specified', 'qsc/core-110f']);
-  m.addFromPart(part);
+  assert.equal(m.addFromPart(part).qty, 2);
   assert.equal(m.items.length, n + 1);
-  assert.equal(line.qty, 2);
+  assert.equal(m.items[0].qty, 2, 'qty is the count of its occurrences');
+  assert.equal(m.occurrences.length, 2);
 });
 
 test('a line from a pick keeps its BIM reference, and a saved line without one stays readable', () => {
