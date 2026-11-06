@@ -4,8 +4,8 @@
    (window.APKSoftapp.connectHost, vendor/apk-softapp/); the table is APKTable
    'bom-items' (vendor/apk-table/); "Discovered" lists what the bus knows
    (APKSoftapp.discoveredPanel, kinds in config/discovery.json).
-   bom-fm-1..3: the lines are a query over a rig's occurrences (Open an .ifc, or Open Bench =
-   GET /api/bim/bench.ifc) grouped by type, kits expanded per occurrence; standalone Save writes the
+   bom-fm-1..3: the lines are a query over a rig's occurrences (Open an .ifc, or Open Bench = the BIM
+   server's GET /api/bim/bom over GET /api/bim/bom.ifc when the API is up, else GET /api/bim/bench.ifc) grouped by type, kits expanded per occurrence; standalone Save writes the
    apk.bom/2 block AND its .ifc twin (APKSoftapp.saveModel; js/bomIfc.js bomToIfc: IfcCostSchedule,
    IfcCostItem, IfcProjectOrder, supplier and maker IfcActors over the rig). */
 
@@ -13,6 +13,9 @@ import { BomModel, BOM_BLOCK_TYPE, BOM_STATUSES } from './bomModel.js';
 import { bomToIfc } from './bomIfc.js';
 
 const BENCH_IFC = '/api/bim/bench.ifc';
+// The BIM server's own BOM query (bim/bom.py): the body, and the rig model it counts (kits expanded)
+const BOM_API = '/api/bim/bom?rig=bench';
+const BOM_IFC = '/api/bim/bom.ifc?rig=bench';
 import { libraryButton, acceptLibraryDrops, bimFields } from './bimLibrary.js';
 
 const money = (v) => Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -28,7 +31,7 @@ export class BomApp {
       does: 'Bill of materials for one drawing: line items with quantity, unit and extended cost, as a BOM block for the CAD.',
       inputs: [
         { name: 'BOM block', from: 'the CAD (when opened from a drawing), or a .json file via Open', kind: 'file' },
-        { name: 'Rig model (.ifc)', from: 'Open an .ifc, or Open Bench (GET /api/bim/bench.ifc): each line is a type, qty = its occurrences', kind: 'file' },
+        { name: 'Rig model (.ifc)', from: 'Open an .ifc, or Open Bench (GET /api/bim/bom + /api/bim/bom.ifc when the BIM API is up, else /api/bim/bench.ifc): each line is a type, qty = its occurrences', kind: 'file' },
         { name: 'Device library', from: 'the BIM library (📚 Library, Ctrl+Shift+L, or a part dragged from it): each line keeps its bimId and bimRef' },
         { name: 'On the network', from: 'the bus: devices discovered by scanners and agents (kinds in config/discovery.json)', kind: 'bus' },
       ],
@@ -115,7 +118,7 @@ export class BomApp {
 
   attachEvents() {
     this.btnOpen?.addEventListener('click', () => this.promptOpen());
-    this.btnOpenBench?.addEventListener('click', () => this.promptOpen({ url: BENCH_IFC }));
+    this.btnOpenBench?.addEventListener('click', () => this.openBench());
     this.btnSave?.addEventListener('click', () => this.saveBlock());
     this.btnClose?.addEventListener('click', () => this.host.close());
     this.btnSyncDiscovered?.addEventListener('click', () => {
@@ -169,6 +172,26 @@ export class BomApp {
     const total = this.model.getTotalCost();
     this.totalCostEl.textContent = `Total Extended: $${money(total)}`;
     this.totalItemsEl.textContent = `${this.model.items.length} Line Items`;
+  }
+
+  /** Open Bench: when the BIM API is up, its query (GET /api/bim/bom) over the model it counts
+      (GET /api/bim/bom.ifc, every kit expanded); else the bench model alone (GET /api/bim/bench.ifc). */
+  async openBench() {
+    let bom = null;
+    try {
+      const r = await fetch(BOM_API, { headers: { Accept: 'application/json' } });
+      if (r.ok) bom = await r.json();
+    } catch { bom = null; }
+    if (!bom || bom.schema !== 'apk.bim.bom/1') return this.promptOpen({ url: BENCH_IFC });
+    const o = await this.promptOpen({ url: BOM_IFC });
+    if (!o.ok) return o;
+    const got = this.model.applyServerBom(bom);
+    const tag = document.getElementById('block-tag');
+    if (tag) tag.textContent = `Bench BOM (${bom.totals?.occurrences ?? '?'} occurrences, ${got.lines} types)`
+      + (got.differ.length ? ` · ${got.differ.length} line(s) changed since` : '');
+    for (const w of got.warnings) console.warn('BOM:', w);
+    this.changed();
+    return { ...o, bom: got };
   }
 
   /** Open an .ifc (a rig, a bench, or a twin this editor saved) or a BOM block .json. */

@@ -68,6 +68,7 @@ export class BomModel {
       };
       if (t.part) line.bimId = t.part;
       if (t.bimRef) line.bimRef = { ...t.bimRef };
+      if (t.drive) line.drive = t.drive;
       const ids = own.filter((o) => o.mac || o.serial);
       if (ids.length === 1) { if (ids[0].mac) line.mac = ids[0].mac; if (ids[0].serial) line.serial = ids[0].serial; }
       out.push(line);
@@ -250,6 +251,31 @@ export class BomModel {
     this.source = { name, project: q.project.gid, schema: q.schema };
     this.baseText = text;
     return q;
+  }
+
+  /** The server's own query (GET /api/bim/bom?rig=bench, DATABASE.server.BIM bim/bom.py, apk.bim.bom/1),
+      laid over the rig model it describes (GET /api/bim/bom.ifc, read by loadIfc): each line's type gains
+      the part's BIM reference, its drive word (a screw is square-drive, Robertson) and its server qty. The
+      counts stay the occurrences': a line whose count differs from the server's is named in the result
+      (the two were read at different times), never overwritten. Returns {lines, differ, warnings}. */
+  applyServerBom(bom = {}) {
+    if (bom.schema !== 'apk.bim.bom/1' || !Array.isArray(bom.lines)) throw new TypeError('not an apk.bim.bom/1 body');
+    const count = new Map();
+    for (const o of this.occurrences) count.set(o.type, (count.get(o.type) || 0) + 1);
+    const differ = [];
+    for (const line of bom.lines) {
+      const t = this.types[line.type];
+      if (!t) { differ.push({ type: line.type, server: line.qty, model: 0 }); continue; }
+      t.part = t.part || line.type;
+      if (line.ref && !t.bimRef) t.bimRef = { ...line.ref };
+      if (line.drive) t.drive = line.drive;
+      if (!t.mfr && line.manufacturer) t.mfr = line.manufacturer;
+      if (!t.sku && (line.part_number || line.model)) t.sku = line.part_number || line.model;
+      t.serverQty = line.qty;
+      if ((count.get(line.type) || 0) !== line.qty) differ.push({ type: line.type, server: line.qty, model: count.get(line.type) || 0 });
+    }
+    this.source = { ...(this.source || {}), bom: bom.schema, rig: bom.rig };
+    return { lines: bom.lines.length, differ, warnings: Array.isArray(bom.warnings) ? bom.warnings : [] };
   }
 
   /* ---- the block -------------------------------------------------------------------------------- */

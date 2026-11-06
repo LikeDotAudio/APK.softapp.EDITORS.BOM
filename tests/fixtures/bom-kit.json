@@ -1,0 +1,192 @@
+{
+ "schema": "apk.bim.bom/1",
+ "rig": "bench",
+ "name": "Bench",
+ "lines": [
+  {
+   "type": "powersoft/dci-4-600",
+   "manufacturer": "Powersoft",
+   "maker": "powersoft",
+   "model": "dci-4-600",
+   "name": "Powersoft dci-4-600",
+   "category": "Audio",
+   "class": "Amplifier",
+   "stage": "declared",
+   "ifc": {
+    "entity": "IfcAudioVisualApplianceType",
+    "predefined_type": "AMPLIFIER",
+    "element_type": "Amplifier"
+   },
+   "ref": {
+    "part": "powersoft/dci-4-600",
+    "url": "/api/bim/parts/powersoft/dci-4-600",
+    "rev": "c0a70dae93d47d27"
+   },
+   "qty": 2,
+   "occurrences": [
+    {
+     "ref": "U1",
+     "globalId": "3vMJugXFHQT8YKLBEGwnnj",
+     "name": "Amp 1"
+    },
+    {
+     "ref": "U2",
+     "globalId": "0YZj7TmNvHOg$72ziAsqkm",
+     "name": "Amp 2"
+    }
+   ],
+   "kit": false
+  },
+  {
+   "type": "apk/rack-ears-2u",
+   "manufacturer": "APK.audio",
+   "maker": "apk",
+   "model": "rack-ears-2u",
+   "name": "APK.audio rack-ears-2u",
+   "category": "Accessories",
+   "stage": "stub",
+   "ifc": {
+    "entity": "IfcDiscreteAccessoryType",
+    "predefined_type": "BRACKET"
+   },
+   "ref": {
+    "part": "apk/rack-ears-2u",
+    "url": "/api/bim/parts/apk/rack-ears-2u",
+    "rev": "322d6d7d51aaad4c"
+   },
+   "qty": 2,
+   "occurrences": [
+    {
+     "ref": "U1/kit/1/1",
+     "globalId": "09ZPjrBKPOUxfOKI3fuqEC",
+     "of": "U1",
+     "role": "mount",
+     "place": "site"
+    },
+    {
+     "ref": "U2/kit/1/1",
+     "globalId": "1NnBKJg5rJafNdD8shJloB",
+     "of": "U2",
+     "role": "mount",
+     "place": "site"
+    }
+   ],
+   "kit": true
+  },
+  {
+   "type": "apk/rack-screw-10-32",
+   "manufacturer": "APK.audio",
+   "maker": "apk",
+   "model": "rack-screw-10-32",
+   "name": "APK.audio rack-screw-10-32",
+   "category": "Accessories",
+   "stage": "declared",
+   "ifc": {
+    "entity": "IfcMechanicalFastenerType",
+    "predefined_type": "SCREW",
+    "element_type": "Robertson (square-drive) screw"
+   },
+   "ref": {
+    "part": "apk/rack-screw-10-32",
+    "url": "/api/bim/parts/apk/rack-screw-10-32",
+    "rev": "7f199b7d11f022e1"
+   },
+   "qty": 12,
+   "occurrences": [
+    {
+     "ref": "U1/kit/0/1",
+     "globalId": "3gY2ZLks5GOvbH5EDod8JB",
+     "of": "U1",
+     "role": "fastener",
+     "place": "site"
+    },
+    {
+     "ref": "U1/kit/0/2",
+     "globalId": "2p0dv$Z7jHwQEIMLljPOTn",
+     "of": "U1",
+     "role": "fastener",
+     "place": "site"
+    },
+    {
+     "ref": "U1/kit/0/3",
+     "globalId": "2cGvEHAQXPRBPBXYnv33Vp",
+     "of": "U1",
+     "role": "fastener",
+     "place": "site"
+    },
+    {
+     "ref": "U1/kit/0/4",
+     "globalId": "3B0DxSaofUYxtMZ39cakAj",
+     "of": "U1",
+     "role": "fastener",
+     "place": "site"
+    },
+    {
+     "ref": "U1/kit/1/1/kit/0/1",
+     "globalId": "2isJFYA$rHof7kridCQYMg",
+     "of": "U1/kit/1/1",
+     "role": "fastener",
+     "place": "factory"
+    },
+    {
+     "ref": "U1/kit/1/1/kit/0/2",
+     "globalId": "0uQxWDZWHOVA8t_NuoXMdk",
+     "of": "U1/kit/1/1",
+     "role": "fastener",
+     "place": "factory"
+    },
+    {
+     "ref": "U2/kit/0/1",
+     "globalId": "3UbEPyK_TJs8UdEj4NM__B",
+     "of": "U2",
+     "role": "fastener",
+     "place": "site"
+    },
+    {
+     "ref": "U2/kit/0/2",
+     "globalId": "2nY7qvBzzRuOcCLZvZt6HB",
+     "of": "U2",
+     "role": "fastener",
+     "place": "site"
+    },
+    {
+     "ref": "U2/kit/0/3",
+     "globalId": "22T69Chy9LaPnV$nxkhT3_",
+     "of": "U2",
+     "role": "fastener",
+     "place": "site"
+    },
+    {
+     "ref": "U2/kit/0/4",
+     "globalId": "2FvPWCr_rJwRdt$nUJDlpS",
+     "of": "U2",
+     "role": "fastener",
+     "place": "site"
+    },
+    {
+     "ref": "U2/kit/1/1/kit/0/1",
+     "globalId": "3B4PHTgtzROAnZaSbBHmp7",
+     "of": "U2/kit/1/1",
+     "role": "fastener",
+     "place": "factory"
+    },
+    {
+     "ref": "U2/kit/1/1/kit/0/2",
+     "globalId": "3AOfsNQzbGwwVGIEN0J9vc",
+     "of": "U2/kit/1/1",
+     "role": "fastener",
+     "place": "factory"
+    }
+   ],
+   "drive": "Robertson (square-drive)",
+   "kit": true
+  }
+ ],
+ "totals": {
+  "types": 3,
+  "occurrences": 16,
+  "devices": 2,
+  "kit_units": 14
+ },
+ "warnings": []
+}
