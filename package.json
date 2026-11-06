@@ -1,6 +1,6 @@
 {
   "name": "bom-materials-editor",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "BOM Bill of Materials Editor on APK.audio",
   "type": "module",
   "scripts": {
