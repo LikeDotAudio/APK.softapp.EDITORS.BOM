@@ -6,6 +6,7 @@
    (APKSoftapp.discoveredPanel, kinds in config/discovery.json). */
 
 import { BomModel, BOM_BLOCK_TYPE, BOM_STATUSES } from './bomModel.js';
+import { libraryButton, acceptLibraryDrops, bimFields } from './bimLibrary.js';
 
 const money = (v) => Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -20,7 +21,7 @@ export class BomApp {
       does: 'Bill of materials for one drawing: line items with quantity, unit and extended cost, as a BOM block for the CAD.',
       inputs: [
         { name: 'BOM block', from: 'the CAD (when opened from a drawing), or a .json file via Open', kind: 'file' },
-        { name: 'Device library', from: 'the BIM library picker at /api/bim (Library button; absent on a static copy)' },
+        { name: 'Device library', from: 'the BIM library (📚 Library, Ctrl+Shift+L, or a part dragged from it): each line keeps its bimId and bimRef' },
         { name: 'On the network', from: 'the bus: devices discovered by scanners and agents (kinds in config/discovery.json)', kind: 'bus' },
       ],
       outputs: [
@@ -29,8 +30,8 @@ export class BomApp {
       ],
       controls: [
         { name: 'Open / Save & Return / Close', how: 'header buttons' },
-        { name: '+ Add Item / Library', how: 'add a blank line, or one or more parts from the device library' },
-        { name: 'Table cells', how: 'edit SKU, maker, description, qty, unit cost, status in place; row button deletes' },
+        { name: '📚 Library', how: 'add one or more parts from the BIM library (Ctrl+Shift+L), or drop a part dragged from it on the table' },
+        { name: 'Table cells', how: 'edit description, qty, unit cost, status in place (SKU and maker are the part\'s); row button deletes' },
         { name: 'Filter', how: 'type to filter the lines by any column' },
         { name: 'Discovered', how: 'shows what the bus has discovered; Add line puts one in the BOM' },
         { name: 'Export CSV', how: 'download the schedule as CSV' },
@@ -78,8 +79,9 @@ export class BomApp {
       id: 'bom-items',
       toolbar: false,
       columns: [
-        { key: 'sku', label: 'SKU / Part #' },
-        { key: 'mfr', label: 'Manufacturer' },
+        // the part's own (the BIM library): never typed here (ROAD-3572)
+        { key: 'sku', label: 'SKU / Part #', editable: false },
+        { key: 'mfr', label: 'Manufacturer', editable: false },
         { key: 'desc', label: 'Equipment Description' },
         { key: 'qty', label: 'Qty', type: 'number' },
         { key: 'unitCost', label: 'Unit Cost ($)', type: 'number' },
@@ -107,12 +109,12 @@ export class BomApp {
       this.discovered.start();
     });
     this.searchInput?.addEventListener('input', () => this.table.filter(this.searchInput.value));
-    this.btnAddItem?.addEventListener('click', () => { this.model.addItem(); this.changed(); });
-    // 📚 Library: the shared picker the BIM library serves. A host without it (a static copy) keeps + Add Item only.
-    import('/api/bim/ui/picker.js').then(({ libraryButton }) => {
-      this.btnAddItem?.before(libraryButton({ title: 'Add equipment from the device library', multi: true },
-        (part) => { this.model.addFromPart(part); this.changed(); }));
-    }).catch(() => {});
+    // 📚 Library (ROAD-3572): every line is a BIM part, with its BIM reference — no blank, typed line
+    const addItems = (items) => { for (const it of items) this.model.addFromPart(it.bim, bimFields(it).bimRef); this.changed(); };
+    this.btnAddItem?.replaceWith(libraryButton(addItems, {
+      className: 'btn btn-primary btn-sm', title: 'Add equipment from the BIM library', multiple: true }));
+    const tableEl = document.getElementById('bom-table');
+    if (tableEl) acceptLibraryDrops(tableEl, (it) => addItems([it]));
     this.btnExportCsv?.addEventListener('click', () => this.table.exportCsv('bom_schedule.csv'));
   }
 

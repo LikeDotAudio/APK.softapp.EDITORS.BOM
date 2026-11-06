@@ -73,3 +73,14 @@ test('a library part becomes a BOM line, and the same part again is one more of 
   assert.equal(m.items.length, n + 1);
   assert.equal(line.qty, 2);
 });
+
+test('a line from a pick keeps its BIM reference, and a saved line without one stays readable', () => {
+  const m = new BomModel();
+  const ref = { part: 'keysight/34401a', url: 'http://apk.local:8160/api/bim/parts/keysight/34401a', rev: '3f1c0a9be27d4410' };
+  const line = m.addFromPart({ id: 'keysight/34401a', manufacturer: 'Keysight', model: '34401A' }, ref);
+  assert.deepEqual(line.bimRef, ref);
+  assert.deepEqual(m.toBlock().items[0].bimRef, ref, 'the ref is saved with the block');
+  const old = new BomModel();
+  assert.ok(old.fromBlock({ items: [{ id: 'item_1', sku: 'CORE-110F', mfr: 'Q-SYS', desc: 'typed by hand', qty: 1, unitCost: 1 }] }));
+  assert.equal(old.items[0].mfr, 'Q-SYS', 'a typed make from before stays readable');
+});

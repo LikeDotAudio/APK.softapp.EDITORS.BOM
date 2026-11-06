@@ -8,7 +8,9 @@ import { BomModel } from '../js/bomModel.js';
 
 test('BOM Model Cost Calculation', () => {
   const model = new BomModel();
-  assert.ok(model.items.length >= 4);
+  assert.equal(model.items.length, 0, 'no demo lines: every line is a BIM part (ROAD-3572)');
+  model.addItem({ sku: 'CORE-110F', mfr: 'Q-SYS', qty: 1, unitCost: 4250 });
+  model.addItem({ sku: 'DCI4-1250N', mfr: 'Crown', qty: 2, unitCost: 3800 });
   const total = model.getTotalCost();
   assert.ok(total > 5000);
   assert.equal(typeof total, 'number');

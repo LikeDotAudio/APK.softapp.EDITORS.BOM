@@ -8,13 +8,9 @@ const num = (v, dflt) => (Number.isFinite(Number(v)) && v !== '' && v !== null ?
 
 export class BomModel {
   constructor() {
-    this.items = [
-      { id: 'item_1', sku: 'CORE-110F', mfr: 'Q-SYS', desc: 'Audio DSP Core Processor Frame', qty: 1, unitCost: 4250.00, status: 'Ordered' },
-      { id: 'item_2', sku: 'CBS350-24P', mfr: 'Cisco', desc: '24-Port Gigabit Managed AV Switch', qty: 2, unitCost: 1150.00, status: 'Received' },
-      { id: 'item_3', sku: 'DCI4-1250N', mfr: 'Crown', desc: '4x1250W DriveCore Network Amplifier', qty: 2, unitCost: 3800.00, status: 'Staged' },
-      { id: 'item_4', sku: 'ULXD4Q-G50', mfr: 'Shure', desc: 'Quad Digital Wireless Microphone Receiver', qty: 1, unitCost: 5400.00, status: 'Quoted' },
-      { id: 'item_5', sku: 'MR610-32', mfr: 'Mr-Label', desc: 'Self-Laminating Cable Label Stock (Pack)', qty: 5, unitCost: 28.50, status: 'Received' },
-    ];
+    /* No demo lines: every line comes from the BIM library (📚 Library, ROAD-3572), from
+       Discovered, or from an opened BOM block. */
+    this.items = [];
   }
 
   getTotalCost() {
@@ -32,6 +28,7 @@ export class BomModel {
       status: item.status || 'Specified',
     };
     for (const k of ['mac', 'serial', 'bimId']) if (item[k]) it[k] = String(item[k]);
+    if (item.bimRef && item.bimRef.part) it.bimRef = { ...item.bimRef };   // the BIM reference (ROAD-3572)
     this.items.push(it);
     return it;
   }
@@ -49,8 +46,9 @@ export class BomModel {
   }
 
   /** A line for a part picked from the BIM library (DATABASE.server.BIM). The same part
-      again is one more of it, not a second line. The library keeps no prices: 0 until quoted. */
-  addFromPart(part = {}) {
+      again is one more of it, not a second line. The library keeps no prices: 0 until quoted.
+      `bimRef` is the pick's BIM reference {part, url, rev} (bimLibrary.js bimFields). */
+  addFromPart(part = {}, bimRef = null) {
     const same = part.id && this.items.find((i) => i.bimId === part.id);
     if (same) {
       same.qty = num(same.qty, 0) + 1;
@@ -64,6 +62,7 @@ export class BomModel {
       unitCost: 0,
       status: 'Specified',
       bimId: part.id || '',
+      bimRef: bimRef || part.ref || null,
     });
   }
 
