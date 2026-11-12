@@ -14,5 +14,5 @@ The documentation for `EDITORS.BOM`, in the same lanes as the APK.audio monorepo
 <!-- /wiki:lanes -->
 
 <!-- wiki:smoke -->
-**Smoke test** — ✅ PASS 3/3 since 2026-11-04 21:31 EST — [results](%F0%9F%A7%A9Manual%20and%20Artifacts/SMOKE.md)
+**Smoke test** — ✅ PASS 3/3 since 2026-11-12 00:40 EST — [results](%F0%9F%A7%A9Manual%20and%20Artifacts/SMOKE.md)
 <!-- /wiki:smoke -->

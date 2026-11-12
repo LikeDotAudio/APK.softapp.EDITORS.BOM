@@ -29,5 +29,5 @@ oracle (`tests/fixtures/ifc_oracle.py`: schema + EXPRESS, util.cost totals, get_
 runs too.
 
 <!-- wiki:smoke -->
-**Smoke test** — ❌ FAIL 2/3 since 2026-11-12 00:16 EST — [results](Documentation/%F0%9F%A7%A9Manual%20and%20Artifacts/SMOKE.md)
+**Smoke test** — ✅ PASS 3/3 since 2026-11-12 00:40 EST — [results](Documentation/%F0%9F%A7%A9Manual%20and%20Artifacts/SMOKE.md)
 <!-- /wiki:smoke -->
